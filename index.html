@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MP4 a Texto</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { margin:0; font-family:'Inter',sans-serif; background:#1a1a2e; color:#fff; display:flex; justify-content:center; align-items:center; min-height:100vh; }
+  .container { background:#162447; padding:2rem; border-radius:15px; width:100%; max-width:450px; text-align:center; box-shadow:0 8px 20px rgba(0,0,0,0.5); }
+  h1 { color:#e43f5a; margin-bottom:1.5rem; }
+  #drop-zone { border:2px dashed #e43f5a; border-radius:12px; padding:2rem; cursor:pointer; margin-bottom:1rem; transition:0.3s; }
+  #drop-zone:hover { background: rgba(228,63,90,0.1); }
+  #drop-zone input { display:none; }
+  #convert-btn { background:#e43f5a; border:none; padding:0.8rem 1.5rem; font-weight:600; border-radius:10px; cursor:pointer; transition:0.3s; margin-bottom:1rem; }
+  #convert-btn:disabled { background:#e43f5a80; cursor:not-allowed; }
+  #convert-btn:hover:not(:disabled) { background:#ff6b81; transform:scale(1.05); }
+  #status { min-height:1.2rem; margin-bottom:1rem; }
+  #result { background:#1f3057; padding:1rem; border-radius:10px; text-align:left; max-height:200px; overflow-y:auto; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🎤 MP4 → Texto</h1>
+  <div id="drop-zone">Arrastra tu MP4 aquí o haz clic
+    <input type="file" id="file-input" accept=".mp4">
+  </div>
+  <button id="convert-btn" disabled>Transcribir</button>
+  <p id="status"></p>
+  <div id="result"></div>
+</div>
+
+<script>
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const convertBtn = document.getElementById('convert-btn');
+const status = document.getElementById('status');
+const result = document.getElementById('result');
+let selectedFile = null;
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => e.preventDefault());
+dropZone.addEventListener('drop', e => { e.preventDefault(); if(e.dataTransfer.files.length>0) handleFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if(fileInput.files.length>0) handleFile(fileInput.files[0]); });
+
+function handleFile(file){
+  if(file.type !== "video/mp4"){ status.textContent="Por favor, selecciona un MP4 válido."; convertBtn.disabled=true; return; }
+  selectedFile=file; status.textContent=`Archivo listo: ${file.name}`; convertBtn.disabled=false;
+}
+
+convertBtn.addEventListener('click', async ()=>{
+  if(!selectedFile) return;
+  convertBtn.disabled=true; status.textContent="⏳ Transcribiendo..."; result.textContent="";
+  const formData=new FormData(); formData.append('file', selectedFile);
+
+  try{
+    const res=await fetch('/transcribe',{method:'POST', body:formData});
+    if(!res.ok) throw new Error(await res.text());
+    const data=await res.json();
+    result.textContent=data.text;
+    status.textContent="✅ Transcripción completada.";
+  } catch(err){
+    console.error(err); status.textContent="❌ Ocurrió un error.";
+  } finally{ convertBtn.disabled=false; }
+});
+</script>
+
+</body>
+</html>
